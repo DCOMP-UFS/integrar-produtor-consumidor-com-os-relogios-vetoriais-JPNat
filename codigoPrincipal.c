@@ -22,8 +22,11 @@
     int value1, value2, value3;
  }Clock;
  
- Clock clockQueue[BUFFER_SIZE];
- int clockCount = 0;
+ Clock clockQueueEntry[BUFFER_SIZE]; //Primeira fila para chegar na thread relogio
+ Clock clockQueueExit[BUFFER_SIZE];  //Fila para sair do relogio
+ 
+ int clockCountEntry = 0;
+ int clockCountExit = 0;
  
  pthread_mutex_t mutex;
  
@@ -37,21 +40,21 @@
  }
  
  
- Clock getClock(){ //função responsável por pegar os valores do relógio na 
-                  // primeira posição e enfileirar a fila, apagando a primeira posição
+ Clock getClock(Clock queue, int count){ //função responsável por pegar os valores do relógio na 
+                   // primeira posição e enfileirar a fila, apagando a primeira posição
  
     pthread_mutex_lock(&mutex);
     
-    while (clockCount == 0){
+    while (count == 0){
        pthread_cond_wait(&condEmpty, &mutex);
     }
     
-    Clock clock = clockQueue[0];
+    Clock clock = queue[0];
     int i;
-    for (i = 0; i < clockCount - 1; i++){
-       clockQueue[i] = clockQueue[i+1];
+    for (i = 0; i < count - 1; i++){
+       queue[i] = queue[i+1];
     }
-    clockCount--;
+    count--;
     
     pthread_mutex_unlock(&mutex);
     pthread_cond_signal(&condFull);
@@ -59,15 +62,16 @@
  }
  
  
- void submitClock(Clock clock){  //função que coloca o relógio na primeira posição da fila
-    pthread_mutex_lock(&mutex);
+ void submitClock(Clock clock, int count, Clock queue){  //função que coloca o relógio na primeira posição da fila
+    
+   pthread_mutex_lock(&mutex);
  
-    while (clockCount == BUFFER_SIZE){
+    while (count == BUFFER_SIZE){
        pthread_cond_wait(&condFull, &mutex);
     }
  
-    clockQueue[clockCount] = clock;
-    clockCount++;
+    queue[count] = clock;
+    count++;
  
     pthread_mutex_unlock(&mutex);
     pthread_cond_signal(&condEmpty);
@@ -75,7 +79,8 @@
  
  
  void *producer(void* args){
-    long id = (long) args;
+    
+   long id = (long) args;
     while(1){
        Clock producerClock;
        producerClock.value1 = rand() % 100;
