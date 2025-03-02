@@ -14,6 +14,7 @@
  #include <unistd.h>
  #include <semaphore.h>
  #include <time.h>
+ #include <mpi.h> 
  
  #define THREAD_NUM 3    // Tamanho do pool de threads consumidoras e produtoras
  #define BUFFER_SIZE 7   // Númermo máximo de relógios enfileiradas
@@ -110,6 +111,28 @@
     return NULL;
  }
  
+ void Event(int pid, Clock *clock){
+   clock->p[pid]++;   
+}
+
+
+void Receive(int pid, Clock *clock, int remetente){
+
+   int message[3];
+   MPI_Recv(message, 3, MPI_INT, remetente, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+   for (int i = 0; i < 3; i++) {
+        if (message[i] > clock->p[i]) {
+            clock->p[i] = message[i];
+        }
+    }
+    
+   clock->p[pid]++;
+
+
+}
+
+
  
  void *startThread(void* args);  
  
