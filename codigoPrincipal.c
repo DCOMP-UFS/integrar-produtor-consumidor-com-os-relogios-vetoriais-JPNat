@@ -119,6 +119,7 @@
  
     pthread_t thread[THREAD_NUM]; 
     long i;
+
     for (i = 0; i < THREAD_NUM; i++){  
        if (pthread_create(&thread[i], NULL, &startThread, (void*) i) != 0) {
           perror("Failed to create the thread");
@@ -138,8 +139,8 @@
  void *startThread(void* args) {
     long id = (long) args; 
     while (1){ 
-       Task task = getClock();
-       executeClock(&task, id);
+       Clock clock = getClock();
+       executeClock(&clock, id);
        sleep(rand()%5);
     }
     return NULL;
