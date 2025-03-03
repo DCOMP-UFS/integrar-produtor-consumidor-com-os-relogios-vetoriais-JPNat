@@ -36,9 +36,9 @@ pthread_cond_t condFull;
 pthread_cond_t condEmpty;
  
  
-void printClock(Clock* clock, int id){  //função responsável por tirar print do relógio
+void printClock(Clock* clock, int process){  //função responsável por tirar print do relógio
    
-   printf("Process: %d, Clock: (%d, %d, %d)\n", 1, clock->p[0], clock->p[1], clock->p[2]);
+   printf("Process: %d, Clock: (%d, %d, %d)\n", process, clock->p[0], clock->p[1], clock->p[2]);
 
 }
  
@@ -49,18 +49,19 @@ Clock getClock(Clock *queue, int *count, pthread_mutex_t *mutex){
    // posição e enfileirar a fila, apagando a primeira posição
    // Usa ponteiros e também Parâmetro de Mutex para certificar qual
    // fila estamos tratando no MPI
-   
+
    pthread_mutex_lock(mutex);
-    
+   
    while ((*count) == 0){
       pthread_cond_wait(&condEmpty, mutex);
    }
-    
+   
    Clock clock = queue[0];
    int i;
    for (i = 0; i < (*count) - 1; i++){
       queue[i] = queue[i+1];
    }
+   
    (*count)--;
     
    pthread_mutex_unlock(mutex);
@@ -71,6 +72,11 @@ Clock getClock(Clock *queue, int *count, pthread_mutex_t *mutex){
  
 void submitClock(Clock *clock, int *count, Clock *queue, pthread_mutex_t *mutex){  //função que coloca o relógio na primeira posição da fila
     
+   // Funcao responsável por colocar um relógio em uma das filas
+   // Tem parametros de Mutex porque cada Mutex cuida de uma fila diferente
+   // entre as duas filas que existem no MPI
+
+
    pthread_mutex_lock(mutex);
  
    while (count == BUFFER_SIZE){
