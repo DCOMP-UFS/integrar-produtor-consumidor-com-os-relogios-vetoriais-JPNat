@@ -43,23 +43,27 @@ void printClock(Clock* clock, int id){  //função responsável por tirar print 
 }
  
  
-Clock getClock(Clock queue, int count){ //função responsável por pegar os valores do relógio na 
-                   // primeira posição e enfileirar a fila, apagando a primeira posição
+Clock getClock(Clock *queue, int *count, pthread_mutex_t *mutex){ 
  
-   pthread_mutex_lock(&mutex);
+   //função responsável por pegar os valores do relógio na primeira 
+   // posição e enfileirar a fila, apagando a primeira posição
+   // Usa ponteiros e também Parâmetro de Mutex para certificar qual
+   // fila estamos tratando no MPI
+   
+   pthread_mutex_lock(mutex);
     
-   while (count == 0){
-      pthread_cond_wait(&condEmpty, &mutex);
+   while ((*count) == 0){
+      pthread_cond_wait(&condEmpty, mutex);
    }
     
    Clock clock = queue[0];
    int i;
-   for (i = 0; i < count - 1; i++){
+   for (i = 0; i < (*count) - 1; i++){
       queue[i] = queue[i+1];
    }
-   count--;
+   (*count)--;
     
-   pthread_mutex_unlock(&mutex);
+   pthread_mutex_unlock(mutex);
    pthread_cond_signal(&condFull);
    return clock;
 }
