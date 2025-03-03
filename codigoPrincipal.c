@@ -19,71 +19,76 @@
  #define THREAD_NUM 3    // Tamanho do pool de threads consumidoras e produtoras
  #define BUFFER_SIZE 7   // Númermo máximo de relógios enfileiradas
  
- typedef struct Clock{
-    int value1, value2, value3;
- }Clock;
+ typedef struct Clock { 
+   int p[3];
+} Clock;
  
- Clock clockQueueEntry[BUFFER_SIZE]; //Primeira fila para chegar na thread relogio
- Clock clockQueueExit[BUFFER_SIZE];  //Fila para sair do relogio
+Clock clockQueueEntry[BUFFER_SIZE]; //Primeira fila para chegar na thread relogio
+Clock clockQueueExit[BUFFER_SIZE];  //Fila para sair do relogio
  
- int clockCountEntry = 0;
- int clockCountExit = 0;
+int clockCountEntry = 0;
+int clockCountExit = 0;
  
- pthread_mutex_t mutex;
+pthread_mutex_t mutexEntry;
+pthread_mutex_t mutexExit;
  
- pthread_cond_t condFull;
- pthread_cond_t condEmpty;
- 
- 
- void printClock(Clock* clock, int id){  //função responsável por tirar print do relógio
- 
-    printf("(%d,%d,%d) - ID: %d", clock->value1, clock->value2, clock->value3, id);
- }
+pthread_cond_t condFull;
+pthread_cond_t condEmpty;
  
  
- Clock getClock(Clock queue, int count){ //função responsável por pegar os valores do relógio na 
+void printClock(Clock* clock, int id){  //função responsável por tirar print do relógio
+   
+   printf("Process: %d, Clock: (%d, %d, %d)\n", 1, clock->p[0], clock->p[1], clock->p[2]);
+
+}
+ 
+ 
+Clock getClock(Clock queue, int count){ //função responsável por pegar os valores do relógio na 
                    // primeira posição e enfileirar a fila, apagando a primeira posição
  
-    pthread_mutex_lock(&mutex);
-    
-    while (count == 0){
-       pthread_cond_wait(&condEmpty, &mutex);
-    }
-    
-    Clock clock = queue[0];
-    int i;
-    for (i = 0; i < count - 1; i++){
-       queue[i] = queue[i+1];
-    }
-    count--;
-    
-    pthread_mutex_unlock(&mutex);
-    pthread_cond_signal(&condFull);
-    return clock;
- }
- 
- 
- void submitClock(Clock clock, int count, Clock queue){  //função que coloca o relógio na primeira posição da fila
-    
    pthread_mutex_lock(&mutex);
+    
+   while (count == 0){
+      pthread_cond_wait(&condEmpty, &mutex);
+   }
+    
+   Clock clock = queue[0];
+   int i;
+   for (i = 0; i < count - 1; i++){
+      queue[i] = queue[i+1];
+   }
+   count--;
+    
+   pthread_mutex_unlock(&mutex);
+   pthread_cond_signal(&condFull);
+   return clock;
+}
  
-    while (count == BUFFER_SIZE){
-       pthread_cond_wait(&condFull, &mutex);
-    }
  
-    queue[count] = clock;
-    count++;
+void submitClock(Clock *clock, int *count, Clock *queue, pthread_mutex_t *mutex){  //função que coloca o relógio na primeira posição da fila
+    
+   pthread_mutex_lock(mutex);
  
-    pthread_mutex_unlock(&mutex);
-    pthread_cond_signal(&condEmpty);
- }
+   while (count == BUFFER_SIZE){
+      pthread_cond_wait(&condFull, mutex);
+   }
+ 
+   queue[*count] = *clock;
+   (*count)++;
+ 
+   pthread_mutex_unlock(mutex);
+   pthread_cond_signal(&condEmpty);
+
+}
  
  
- void *producer(void* args){
+void *producer(void* args){
     
    long id = (long) args;
-    while(1){
+
+      while(1){
        Clock producerClock;
+
        producerClock.value1 = rand() % 100;
        producerClock.value2 = rand() % 100;
        producerClock.value3 = rand() % 100;
@@ -91,27 +96,51 @@
        submitClock(producerClock);
  
        sleep(1);
-    }
-    return NULL;
- }
+      }
+
+   return NULL;
+}
  
  
- void *consumers(void* args){
+void *consumers(void* args){
  
-    long id = (long) args; 
+   long id = (long) args; 
  
-    while(1){
+   while(1){
  
-       Clock clock = getClock();
-       printClock(&clock, id);
-       sleep(2);
+      Clock clock = getClock();
+      printClock(&clock, id);
+      sleep(2);
  
-    }
+   }
  
-    return NULL;
- }
+   return NULL;
+}
+
+void *threadClock(void* args, int pid, Clock *clock){ //thread responsável por atualizar o relógio
  
- void Event(int pid, Clock *clock){
+   long id = (long) args; 
+
+   while(1){
+
+      Clock clockGot = getClock(clockQueueEntry, clockCountEntry);
+
+      for (int i = 0; i < 3; i++) {
+         if (clockGot[i] > clock->p[i]) {
+             clock->p[i] = clockGot[i];
+            }
+      }
+      
+      clock->p[pid]++;
+
+      sleep(2);
+   }
+
+   return NULL;
+}
+ 
+
+void Event(int pid, Clock *clock){
    clock->p[pid]++;   
 }
 
@@ -129,31 +158,30 @@ void Receive(int pid, Clock *clock, int remetente){
     
    clock->p[pid]++;
 
-
 }
 
 
  
- void *startThread(void* args);  
+void *startThread(void* args);  
  
  /*--------------------------------------------------------------------*/
  int main(int argc, char* argv[]) {
  
-    pthread_mutex_init(&mutex, NULL);
+   pthread_mutex_init(&mutex, NULL);
     
-    pthread_cond_init(&condEmpty, NULL);
-    pthread_cond_init(&condFull, NULL);
+   pthread_cond_init(&condEmpty, NULL);
+   pthread_cond_init(&condFull, NULL);
  
  
-    pthread_t thread[THREAD_NUM]; 
-    long i;
+   pthread_t thread[THREAD_NUM]; 
+   long i;
 
-    for (i = 0; i < THREAD_NUM; i++){  
+   for (i = 0; i < THREAD_NUM; i++){  
+
        if (pthread_create(&thread[i], NULL, &startThread, (void*) i) != 0) {
           perror("Failed to create the thread");
        }  
-    }
-    
+   }
    
     pthread_mutex_destroy(&mutex);
     pthread_cond_destroy(&condEmpty);
@@ -164,14 +192,15 @@ void Receive(int pid, Clock *clock, int remetente){
  /*-------------------------------------------------------------------*/
  
  
- void *startThread(void* args) {
-    long id = (long) args; 
-    while (1){ 
-       Clock clock = getClock();
-       executeClock(&clock, id);
-       sleep(rand()%5);
-    }
+void *startThread(void* args) {
+   long id = (long) args; 
+   while (1){ 
+      Clock clock = getClock();
+      executeClock(&clock, id);
+      sleep(rand()%5);
+   }
+
     return NULL;
- } 
+} 
  
  
