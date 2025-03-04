@@ -164,7 +164,7 @@ Clock recieveClock
 
    int recieved[3];
 
-   MPI_Recv( recieved, 3, MPI_INT, (int)whoSent, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+   MPI_Recv( recieved, 3, MPI_INT, *(int*)whoSent, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 
    if (clockCountEntry > 2)
    {
@@ -181,14 +181,10 @@ Clock recieveClock
 
 void updateClock
 (
-   void *args
+   void* arg
 ){
    pthread_mutex_lock(&mutex);
-
-   long input[2] = (long)args;
-
-   long action = input[0];
-   long process = input[1];
+   int action = *(int* )arg;
 
    switch (action)
    {
@@ -199,7 +195,7 @@ void updateClock
       if (clockCountEntry == 0){
          pthread_cond_wait(&cond_process, &mutex);
       }
-      Clock newClok = getClock(clockQueueEntry, clockCountEntry);
+      Clock newClok = getClock(&clockQueueEntry, &clockCountEntry);
       for (int i = 0; i < 3; i++) {
          processClock.times[i] > newClok.times[i] ? processClock.times[i] : newClok.times[i];
       }
