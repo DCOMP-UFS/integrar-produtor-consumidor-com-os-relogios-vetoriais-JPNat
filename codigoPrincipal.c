@@ -41,7 +41,7 @@ Clock getClock
 // função responsável por pegar os valores do relógio na primeira
 //  posição e enfileirar a fila, apagando a primeira posição
 
-Clock recieveClock
+void recieveClock
 (
    void *whoSent
 );
@@ -96,8 +96,6 @@ int main
 
    pthread_t thread[THREAD_NUM];
 
-   MPI_Init(NULL, NULL);
-
    switch (my_rank)
    {
    case 0:
@@ -118,6 +116,7 @@ int main
    pthread_cond_destroy(&cond_process);
    pthread_cond_destroy(&cond_send);
 
+   MPI_Finalize();
    return 0;
 } /* main */
 
@@ -156,7 +155,7 @@ void submitClock
    (count)++;
 }
 
-Clock recieveClock
+void recieveClock
 (
    void *whoSent
 ){
@@ -229,15 +228,33 @@ void event
 
 void process0
 (){
+   pthread_t reciever;
+   pthread_t body;
+   pthread_t deliver;
 
+   pthread_join(reciever, NULL);
+   pthread_join(body, NULL);
+   pthread_join(deliver, NULL);
 }
 
 void process1
 (){
+   pthread_t reciever;
+   pthread_t body;
+   pthread_t deliver;
 
+   pthread_join(reciever, NULL);
+   pthread_join(body, NULL);
+   pthread_join(deliver, NULL);
 }
 
 void process2
 (){
+   pthread_t reciever;
+   pthread_t body;
+   pthread_t deliver;
 
+   pthread_join(reciever, NULL);
+   pthread_join(body, NULL);
+   pthread_join(deliver, NULL);
 }
