@@ -49,7 +49,7 @@ void submitClock
 );
 // Funcao responsável por colocar um relógio em uma das filas
 
-void recieveClock
+void receiveClock
 (
    void *whoSent
 );
@@ -140,7 +140,7 @@ void submitClock
    count++;
 }
 
-void recieveClock
+void receiveClock
 (
    void *whoSent
 ){
@@ -201,6 +201,7 @@ void updateClock
       printClock(my_rank, processClock);
       break;
    case 2:// pega relógio da fila de entrada
+      
       if (clockCountEntry == 0){
          pthread_cond_wait(&cond_process, &mutex);
       }
@@ -240,7 +241,7 @@ void event
 
 void process0
 (){
-   pthread_t reciever;
+   pthread_t receiver;
    pthread_t body;// responsável pelo corpo do relógio
    pthread_t deliver;
    
@@ -253,7 +254,7 @@ void process0
    // utilizando as funções clockSend clockRecieve e clockUpdate
 
    // fim da area onde se deve programar
-   pthread_join(reciever, NULL);
+   pthread_join(receiver, NULL);
    pthread_join(body, NULL);
    pthread_join(deliver, NULL);
 
@@ -265,7 +266,7 @@ void process0
 
 void process1
 (){
-   pthread_t reciever;
+   pthread_t receiver;
    pthread_t body;// responsável pelo corpo do relógio
    pthread_t deliver;
    
@@ -278,7 +279,7 @@ void process1
    // utilizando as funções clockSend clockRecieve e clockUpdate
 
    // fim da area onde se deve programar
-   pthread_join(reciever, NULL);
+   pthread_join(receiver, NULL);
    pthread_join(body, NULL);
    pthread_join(deliver, NULL);
 
@@ -290,7 +291,7 @@ void process1
 
 void process2
 (){
-   pthread_t reciever;
+   pthread_t receiver;
    pthread_t body;// responsável pelo corpo do relógio
    pthread_t deliver;
    
@@ -301,9 +302,9 @@ void process2
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
    // utilizando as funções clockSend clockRecieve e clockUpdate
-
+      
    // fim da area onde se deve programar
-   pthread_join(reciever, NULL);
+   pthread_join(receiver, NULL);
    pthread_join(body, NULL);
    pthread_join(deliver, NULL);
 
