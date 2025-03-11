@@ -100,6 +100,14 @@ int main
       break;
    }
 
+   for (int i = 0; i < 3; i++)
+   {
+      if (my_rank == i){
+         printClock(my_rank, processClock);
+      }
+      wait(3);
+   }
+
    MPI_Finalize();
    return 0;
 } /* main */
