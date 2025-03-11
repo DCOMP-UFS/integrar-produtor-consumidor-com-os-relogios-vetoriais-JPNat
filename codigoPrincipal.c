@@ -211,6 +211,7 @@ void* updateClock
       printClock(my_rank, processClock);
       break;
    case 2:// pega relógio da fila de entrada
+      processClock.times[my_rank]++;
       if (clockCountEntry == 0){
          pthread_cond_wait(&cond_process, &mutex);
       }
