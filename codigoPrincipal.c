@@ -24,7 +24,7 @@ int my_rank;
 
 pthread_mutex_t mutex;
 
-pthread_cond_t cond_recieve, cond_send, cond_process;
+pthread_cond_t cond_receive, cond_send, cond_process;
 
 void printClock
 (
@@ -49,7 +49,7 @@ void submitClock
 );
 // Funcao responsável por colocar um relógio em uma das filas
 
-void recieveClock
+void receiveClock
 (
    void *whoSent
 );
@@ -140,7 +140,7 @@ void submitClock
    count++;
 }
 
-void recieveClock
+void receiveClock
 (
    void *whoSent
 ){
@@ -151,7 +151,7 @@ void recieveClock
    pthread_mutex_lock(&mutex);
    if (clockCountEntry == 2)
    {
-      pthread_cond_wait(&cond_recieve, &mutex);
+      pthread_cond_wait(&cond_receive, &mutex);
    }
 
    Clock newClock = {{recieved[0], recieved[1], recieved[2]}};
@@ -251,10 +251,15 @@ void process0
    // Programe cada processo dentro do bloco
    // utilizando as funções clockSend clockRecieve e clockUpdate
    pthread_create(&body, NULL, &updateClock, (void*) 1);
+   pthread_create(&body, NULL, &updateClock, (void*) 3);
    pthread_create(&deliver, NULL, &sendClock, (void*) 1);
-   pthread_create(&receiver, NULL, &recieveClock, (void*) 1);
+   pthread_create(&receiver, NULL, &receiveClock, (void*) 1);
+   pthread_create(&body, NULL, &updateClock, (void*) 2);
+   pthread_create(&body, NULL, &updateClock, (void*) 3);
    pthread_create(&deliver, NULL, &sendClock, (void*) 2);
-   pthread_create(&receiver, NULL, &recieveClock, (void*) 2);
+   pthread_create(&receiver, NULL, &receiveClock, (void*) 2);
+   pthread_create(&body, NULL, &updateClock, (void*) 2);
+   pthread_create(&body, NULL, &updateClock, (void*) 3);
    pthread_create(&deliver, NULL, &sendClock, (void*) 1);
    pthread_create(&body, NULL, &updateClock, (void*) 1);
    // fim da area onde se deve programar
@@ -263,7 +268,7 @@ void process0
    pthread_join(deliver, NULL);
 
    pthread_mutex_destroy(&mutex);
-   pthread_cond_destroy(&cond_recieve);
+   pthread_cond_destroy(&cond_receive);
    pthread_cond_destroy(&cond_process);
    pthread_cond_destroy(&cond_send);
 }
@@ -276,21 +281,24 @@ void process1
    
    pthread_mutex_init(&mutex, NULL);
 
-   pthread_cond_init(&cond_recieve, NULL);
+   pthread_cond_init(&cond_receive, NULL);
    pthread_cond_init(&cond_send, NULL);
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
    // utilizando as funções clockSend clockRecieve e clockUpdate
+   pthread_create(&body, NULL, &updateClock, (void*) 3);
    pthread_create(&deliver, NULL, &sendClock, (void*) 0);
-   pthread_create(&receiver, NULL, &recieveClock, (void*) 0);
-   pthread_create(&receiver, NULL, &recieveClock, (void*) 0);
+   pthread_create(&receiver, NULL, &receiveClock, (void*) 0);
+   pthread_create(&body, NULL, &updateClock, (void*) 2);
+   pthread_create(&receiver, NULL, &receiveClock, (void*) 0);
+   pthread_create(&body, NULL, &updateClock, (void*) 2);
    // fim da area onde se deve programar
    pthread_join(receiver, NULL);
    pthread_join(body, NULL);
    pthread_join(deliver, NULL);
 
    pthread_mutex_destroy(&mutex);
-   pthread_cond_destroy(&cond_recieve);
+   pthread_cond_destroy(&cond_receive);
    pthread_cond_destroy(&cond_process);
    pthread_cond_destroy(&cond_send);
 }
@@ -303,21 +311,23 @@ void process2
    
    pthread_mutex_init(&mutex, NULL);
 
-   pthread_cond_init(&cond_recieve, NULL);
+   pthread_cond_init(&cond_receive, NULL);
    pthread_cond_init(&cond_send, NULL);
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
    // utilizando as funções clockSend clockRecieve e clockUpdate
    pthread_create(&body, NULL, &updateClock, (void*) 1);
+   pthread_create(&body, NULL, &updateClock, (void*) 3);
    pthread_create(&deliver, NULL, &sendClock, (void*) 0);
-   pthread_create(&receiver, NULL, &recieveClock, (void*) 0);
+   pthread_create(&receiver, NULL, &receiveClock, (void*) 0);
+   pthread_create(&body, NULL, &updateClock, (void*) 2);
    // fim da area onde se deve programar
    pthread_join(receiver, NULL);
    pthread_join(body, NULL);
    pthread_join(deliver, NULL);
 
    pthread_mutex_destroy(&mutex);
-   pthread_cond_destroy(&cond_recieve);
+   pthread_cond_destroy(&cond_receive);
    pthread_cond_destroy(&cond_process);
    pthread_cond_destroy(&cond_send);
 }
