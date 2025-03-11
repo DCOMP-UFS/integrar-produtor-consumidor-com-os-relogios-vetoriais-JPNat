@@ -164,8 +164,7 @@ void recieveClock
    pthread_cond_signal(&cond_process);
 }
 
-void sendClock
-(
+void sendClock(
    void *toWho
 ){
    pthread_mutex_lock(&mutex);
@@ -251,7 +250,13 @@ void process0
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
    // utilizando as funções clockSend clockRecieve e clockUpdate
-
+   pthread_create(&body, NULL, &updateClock, (void*) 1);
+   pthread_create(&deliver, NULL, &sendClock, (void*) 1);
+   pthread_create(&reciever, NULL, &recieveClock, (void*) 1);
+   pthread_create(&deliver, NULL, &sendClock, (void*) 2);
+   pthread_create(&reciever, NULL, &recieveClock, (void*) 2);
+   pthread_create(&deliver, NULL, &sendClock, (void*) 1);
+   pthread_create(&body, NULL, &updateClock, (void*) 1);
    // fim da area onde se deve programar
    pthread_join(reciever, NULL);
    pthread_join(body, NULL);
@@ -276,7 +281,9 @@ void process1
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
    // utilizando as funções clockSend clockRecieve e clockUpdate
-
+   pthread_create(&deliver, NULL, &sendClock, (void*) 0);
+   pthread_create(&reciever, NULL, &recieveClock, (void*) 0);
+   pthread_create(&reciever, NULL, &recieveClock, (void*) 0);
    // fim da area onde se deve programar
    pthread_join(reciever, NULL);
    pthread_join(body, NULL);
@@ -301,7 +308,9 @@ void process2
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
    // utilizando as funções clockSend clockRecieve e clockUpdate
-
+   pthread_create(&body, NULL, &updateClock, (void*) 1);
+   pthread_create(&deliver, NULL, &sendClock, (void*) 0);
+   pthread_create(&reciever, NULL, &recieveClock, (void*) 0);
    // fim da area onde se deve programar
    pthread_join(reciever, NULL);
    pthread_join(body, NULL);
