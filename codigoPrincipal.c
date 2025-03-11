@@ -7,10 +7,9 @@
 #include <mpi.h>
 
 #define BUFFER_SIZE 3
-#define THREAD_NUM 3
 
 typedef struct{
-   int times[3];
+   int times[BUFFER_SIZE];
 }Clock;
 
 Clock processClock = {{0, 0, 0}};
@@ -36,7 +35,7 @@ void printClock
 Clock getClock
 (
    Clock *queue,
-   int queueCount
+   int *queueCount
 );
 // função responsável por pegar os valores do relógio na primeira
 //  posição e enfileirar a fila, apagando a primeira posição
@@ -44,24 +43,24 @@ Clock getClock
 void submitClock
 (
    Clock clock,
-   int count,
+   int *count,
    Clock *queue
 );
 // Funcao responsável por colocar um relógio em uma das filas
 
-void receiveClock
+void* receiveClock
 (
    void *whoSent
 );
 // função da thread que recebe relógio de outros processos
 
-void sendClock
+void* sendClock
 (
    void *clock
 );
 // função da thread que envia relógio de outros processos
 
-void updateClock
+void* updateClock
 (
    void *clock
 );
@@ -116,16 +115,16 @@ void printClock
 Clock getClock
 (
    Clock *queue,
-   int queueCount
+   int *queueCount
 ){
    Clock clock = queue[0];
    int i;
-   for (i = 0; i < queueCount - 1; i++)
+   for (i = 0; i < *queueCount - 1; i++)
    {
       queue[i] = queue[i + 1];
    }
 
-   queueCount--;
+   (*queueCount)--;
 
    return clock;
 }
@@ -133,40 +132,43 @@ Clock getClock
 void submitClock
 (
    Clock clock,
-   int count,
+   int *count,
    Clock *queue
 ){
-   queue[count] = clock;
-   count++;
+   queue[*count] = clock;
+   (*count)++;
 }
 
-void receiveClock
+void* receiveClock
 (
    void *whoSent
 ){
-   int recieved[3];
+   int source = (int)(intptr_t)whoSent;
+   int received[BUFFER_SIZE];
 
-   MPI_Recv(recieved, 3, MPI_INT, (long)whoSent, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+   MPI_Recv(received, BUFFER_SIZE, MPI_INT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 
    pthread_mutex_lock(&mutex);
-   if (clockCountEntry == 2)
+   if (clockCountEntry == BUFFER_SIZE)
    {
       pthread_cond_wait(&cond_receive, &mutex);
    }
 
-   Clock newClock = {{recieved[0], recieved[1], recieved[2]}};
+   Clock newClock = {{received[0], received[1], received[2]}};
 
-   printf("%d recieved \nFrom:", my_rank);
-   printClock((int)(long)whoSent, newClock);
+   printf("%d received \nFrom:", my_rank);
+   printClock(source, newClock);
 
-   submitClock( newClock, clockCountEntry, (Clock*)clockQueueEntry );
+   submitClock(newClock, &clockCountEntry, clockQueueEntry);
    pthread_mutex_unlock(&mutex);
    pthread_cond_signal(&cond_process);
+   return NULL;
 }
 
-void sendClock(
+void* sendClock(
    void *toWho
 ){
+   int destination = (int)(intptr_t)toWho;
    pthread_mutex_lock(&mutex);
 
    if (clockCountExit == 0)
@@ -174,23 +176,24 @@ void sendClock(
       pthread_cond_wait(&cond_send, &mutex);
    }
 
-   Clock newClock = getClock(clockQueueExit, clockCountExit);
+   Clock newClock = getClock(clockQueueExit, &clockCountExit);
 
    printf("sending from %d\nTo ", my_rank);
-   printClock((int)(long)toWho, newClock);
+   printClock(destination, newClock);
 
    pthread_mutex_unlock(&mutex);
    pthread_cond_signal(&cond_process);
 
-   MPI_Send(newClock.times, 3, MPI_INT, (long)toWho, 0, MPI_COMM_WORLD);
+   MPI_Send(newClock.times, BUFFER_SIZE, MPI_INT, destination, 0, MPI_COMM_WORLD);
+   return NULL;
 }
 
-void updateClock
+void* updateClock
 (
    void* arg
 ){
    pthread_mutex_lock(&mutex);
-   int action = *(int* )arg;
+   int action = (int)(intptr_t)arg;
 
    switch (action)
    {
@@ -203,19 +206,19 @@ void updateClock
       if (clockCountEntry == 0){
          pthread_cond_wait(&cond_process, &mutex);
       }
-      Clock newClok = getClock(clockQueueEntry, clockCountEntry);
-      for (int i = 0; i < 3; i++) {
+      Clock newClok = getClock(clockQueueEntry, &clockCountEntry);
+      for (int i = 0; i < BUFFER_SIZE; i++) {
          processClock.times[i] = processClock.times[i] > newClok.times[i] ? processClock.times[i] : newClok.times[i];
       }
       printf("Update on ");
       printClock(my_rank, processClock);
       break;
-   case 3:// envia relógio pra fila de envio
+   case BUFFER_SIZE:// envia relógio pra fila de envio
       processClock.times[my_rank]++;
-      if (clockCountExit == 2){
+      if (clockCountExit == BUFFER_SIZE){
          pthread_cond_wait(&cond_process, &mutex);
       }
-      submitClock (processClock, clockCountExit, clockQueueExit);
+      submitClock (processClock, &clockCountExit, clockQueueExit);
       break;
    default:
       break;
@@ -224,12 +227,13 @@ void updateClock
    pthread_mutex_unlock(&mutex);
    if(action == 2)
    {
-      pthread_cond_signal(&cond_recieve);
+      pthread_cond_signal(&cond_receive);
    }
-   if(action == 3)
+   if(action == BUFFER_SIZE)
    {
       pthread_cond_signal(&cond_send);
    }
+   return NULL;
 }
 
 void event
@@ -245,23 +249,23 @@ void process0
    
    pthread_mutex_init(&mutex, NULL);
 
-   pthread_cond_init(&cond_recieve, NULL);
+   pthread_cond_init(&cond_receive, NULL);
    pthread_cond_init(&cond_send, NULL);
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
-   // utilizando as funções clockSend clockRecieve e clockUpdate
-   pthread_create(&body, NULL, &updateClock, (void*) 1);
-   pthread_create(&body, NULL, &updateClock, (void*) 3);
-   pthread_create(&deliver, NULL, &sendClock, (void*) 1);
-   pthread_create(&receiver, NULL, &receiveClock, (void*) 1);
-   pthread_create(&body, NULL, &updateClock, (void*) 2);
-   pthread_create(&body, NULL, &updateClock, (void*) 3);
-   pthread_create(&deliver, NULL, &sendClock, (void*) 2);
-   pthread_create(&receiver, NULL, &receiveClock, (void*) 2);
-   pthread_create(&body, NULL, &updateClock, (void*) 2);
-   pthread_create(&body, NULL, &updateClock, (void*) 3);
-   pthread_create(&deliver, NULL, &sendClock, (void*) 1);
-   pthread_create(&body, NULL, &updateClock, (void*) 1);
+   // utilizando as funções clockSend clockReceive e clockUpdate
+   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 1);
+   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 3);
+   pthread_create(&deliver, NULL, &sendClock, (void*)(intptr_t) 1);
+   pthread_create(&receiver, NULL, &receiveClock, (void*)(intptr_t) 1);
+   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 2);
+   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 3);
+   pthread_create(&deliver, NULL, &sendClock, (void*)(intptr_t) 2);
+   pthread_create(&receiver, NULL, &receiveClock, (void*)(intptr_t) 2);
+   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 2);
+   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 3);
+   pthread_create(&deliver, NULL, &sendClock, (void*)(intptr_t) 1);
+   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 1);
    // fim da area onde se deve programar
    pthread_join(receiver, NULL);
    pthread_join(body, NULL);
@@ -285,7 +289,7 @@ void process1
    pthread_cond_init(&cond_send, NULL);
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
-   // utilizando as funções clockSend clockRecieve e clockUpdate
+   // utilizando as funções clockSend clockReceive e clockUpdate
    pthread_create(&body, NULL, &updateClock, (void*) 3);
    pthread_create(&deliver, NULL, &sendClock, (void*) 0);
    pthread_create(&receiver, NULL, &receiveClock, (void*) 0);
@@ -315,7 +319,7 @@ void process2
    pthread_cond_init(&cond_send, NULL);
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
-   // utilizando as funções clockSend clockRecieve e clockUpdate
+   // utilizando as funções clockSend clockReceive e clockUpdate
    pthread_create(&body, NULL, &updateClock, (void*) 1);
    pthread_create(&body, NULL, &updateClock, (void*) 3);
    pthread_create(&deliver, NULL, &sendClock, (void*) 0);
