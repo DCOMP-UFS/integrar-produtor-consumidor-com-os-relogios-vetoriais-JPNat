@@ -262,18 +262,18 @@ void process0
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
    // utilizando as funções clockSend clockReceive e clockUpdate
-   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 1);
-   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 3);
-   pthread_create(&deliver, NULL, &sendClock, (void*)(intptr_t) 1);
-   pthread_create(&receiver, NULL, &receiveClock, (void*)(intptr_t) 1);
-   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 2);
-   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 3);
-   pthread_create(&deliver, NULL, &sendClock, (void*)(intptr_t) 2);
-   pthread_create(&receiver, NULL, &receiveClock, (void*)(intptr_t) 2);
-   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 2);
-   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 3);
-   pthread_create(&deliver, NULL, &sendClock, (void*)(intptr_t) 1);
-   pthread_create(&body, NULL, &updateClock, (void*)(intptr_t) 1);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 1);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 3);
+   pthread_create(&deliver, NULL, sendClock, (void*)(intptr_t) 1);
+   pthread_create(&receiver, NULL, receiveClock, (void*)(intptr_t) 1);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 2);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 3);
+   pthread_create(&deliver, NULL, sendClock, (void*)(intptr_t) 2);
+   pthread_create(&receiver, NULL, receiveClock, (void*)(intptr_t) 2);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 2);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 3);
+   pthread_create(&deliver, NULL, sendClock, (void*)(intptr_t) 1);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 1);
    // fim da area onde se deve programar
    pthread_join(receiver, NULL);
    pthread_join(body, NULL);
@@ -298,12 +298,12 @@ void process1
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
    // utilizando as funções clockSend clockReceive e clockUpdate
-   pthread_create(&body, NULL, &updateClock, (void*) 3);
-   pthread_create(&deliver, NULL, &sendClock, (void*) 0);
-   pthread_create(&receiver, NULL, &receiveClock, (void*) 0);
-   pthread_create(&body, NULL, &updateClock, (void*) 2);
-   pthread_create(&receiver, NULL, &receiveClock, (void*) 0);
-   pthread_create(&body, NULL, &updateClock, (void*) 2);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 3);
+   pthread_create(&deliver, NULL, sendClock, (void*)(intptr_t) 0);
+   pthread_create(&receiver, NULL, receiveClock, (void*)(intptr_t) 0);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 2);
+   pthread_create(&receiver, NULL, receiveClock, (void*)(intptr_t) 0);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 2);
    // fim da area onde se deve programar
    pthread_join(receiver, NULL);
    pthread_join(body, NULL);
@@ -328,11 +328,11 @@ void process2
    pthread_cond_init(&cond_process, NULL);
    // Programe cada processo dentro do bloco
    // utilizando as funções clockSend clockReceive e clockUpdate
-   pthread_create(&body, NULL, &updateClock, (void*) 1);
-   pthread_create(&body, NULL, &updateClock, (void*) 3);
-   pthread_create(&deliver, NULL, &sendClock, (void*) 0);
-   pthread_create(&receiver, NULL, &receiveClock, (void*) 0);
-   pthread_create(&body, NULL, &updateClock, (void*) 2);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 1);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 3);
+   pthread_create(&deliver, NULL, sendClock, (void*)(intptr_t) 0);
+   pthread_create(&receiver, NULL, receiveClock, (void*)(intptr_t) 0);
+   pthread_create(&body, NULL, updateClock, (void*)(intptr_t) 2);
    // fim da area onde se deve programar
    pthread_join(receiver, NULL);
    pthread_join(body, NULL);
