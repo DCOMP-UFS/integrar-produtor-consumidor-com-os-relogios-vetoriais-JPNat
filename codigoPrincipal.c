@@ -132,6 +132,7 @@ int main
    }
    sem_destroy(&semaphore_Receive);
    sem_destroy(&semaphore_Send);
+
    MPI_Finalize();
    return 0;
 } /* main */
@@ -222,8 +223,8 @@ void* sendClock(
 
       sem_wait(&semaphore_Send);
       MPI_Send(newClock.times, BUFFER_SIZE, MPI_INT, destination, 0, MPI_COMM_WORLD);
-      return NULL;
    }
+   return NULL;
 }
 
 void event
