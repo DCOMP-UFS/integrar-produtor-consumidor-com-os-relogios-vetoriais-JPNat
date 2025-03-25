@@ -25,46 +25,19 @@ int source, destination;
 
 pthread_mutex_t receive_mutex, send_mutex;
 
-pthread_cond_t cond_receive_full, cond_receive_empty;
-pthread_cond_t cond_send_full, cond_send_empty;
+pthread_cond_t receive_notFull, receive_notEmpty;
+pthread_cond_t send_notFull, send_notEmpty;
 
 pthread_cond_t updatedSource, updatedDestination;
 
 sem_t semaphore_Receive, semaphore_Send;
 
-void printClock
-(
-   int who,
-   Clock showClock
-);
-// função responsável por mostrar o relógio
-
-Clock getClock
-(
-   Clock *queue,
-   int *queueCount
-);
-// função responsável por pegar os valores do relógio na primeira
-//  posição e enfileirar a fila, apagando a primeira posição
-
-void submitClock
-(
-   Clock clock,
-   int *count,
-   Clock *queue
-);
-// Funcao responsável por colocar um relógio em uma das filas
-
+void printClock (int who, Clock showClock);
+Clock getClock (Clock *queue, int *queueCount);
+void submitClock (Clock clock, int *count, Clock *queue);
 void* receiveClock();
-// função da thread que recebe relógio de outros processos
-
 void* sendClock();
-// função da thread que envia relógio de outros processos
-
-void event
-();
-// função que aumenta o valor do relógio a depender do processo
-
+void event();
 void toSendQueue(int to);
 void receiveFromQueue(int from);
 
@@ -85,10 +58,10 @@ int main
    pthread_mutex_init(&receive_mutex, NULL);
    pthread_mutex_init(&send_mutex, NULL);
 
-   pthread_cond_init(&cond_receive_full, NULL);
-   pthread_cond_init(&cond_receive_empty, NULL);
-   pthread_cond_init(&cond_send_empty, NULL);
-   pthread_cond_init(&cond_send_full, NULL);
+   pthread_cond_init(&receive_notFull, NULL);
+   pthread_cond_init(&receive_notEmpty, NULL);
+   pthread_cond_init(&send_notEmpty, NULL);
+   pthread_cond_init(&send_notFull, NULL);
 
    pthread_create(&receiver, NULL, &receiveClock, NULL);
    pthread_create(&deliver, NULL, &sendClock, NULL);
@@ -130,10 +103,10 @@ int main
    pthread_mutex_destroy(&receive_mutex);
    pthread_mutex_destroy(&send_mutex);
 
-   pthread_cond_destroy(&cond_receive_empty);
-   pthread_cond_destroy(&cond_receive_full);
-   pthread_cond_destroy(&cond_send_empty);
-   pthread_cond_destroy(&cond_send_full);
+   pthread_cond_destroy(&receive_notEmpty);
+   pthread_cond_destroy(&receive_notFull);
+   pthread_cond_destroy(&send_notEmpty);
+   pthread_cond_destroy(&send_notFull);
    
    MPI_Finalize();
    return 0;
@@ -181,21 +154,21 @@ void* receiveClock()
       int received[BUFFER_SIZE];
 
       sem_wait(&semaphore_Receive);
-      MPI_Recv(received, BUFFER_SIZE, MPI_INT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+      MPI_Recv(received, BUFFER_SIZE, MPI_INT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
       Clock newClock = {{received[0], received[1], received[2]}};
-      printf("%d received \nFrom:", source);
-      printClock(my_rank, processClock);
+      printf("%d received \nFrom:", my_rank);
+      printClock(source, processClock);
 
       pthread_mutex_lock(&receive_mutex);
       if (clockCountReceive == BUFFER_SIZE)
       {
-         pthread_cond_wait(&cond_receive_empty, &receive_mutex);
+         pthread_cond_wait(&receive_notFull, &receive_mutex);
       }
 
       submitClock(newClock, &clockCountReceive, clockReceiveQueue);
       pthread_mutex_unlock(&receive_mutex);
-      pthread_cond_signal(&cond_receive_full);
+      pthread_cond_signal(&receive_notEmpty);
       return NULL;
    }
 }
@@ -208,13 +181,13 @@ void* sendClock()
 
       if (clockCountSend == 0)
       {
-         pthread_cond_wait(&cond_send_empty, &send_mutex);
+         pthread_cond_wait(&send_notEmpty, &send_mutex);
       }
       
       Clock newClock = getClock(clockSendQueue, &clockCountSend);
 
       pthread_mutex_unlock(&send_mutex);
-      pthread_cond_signal(&cond_send_full);
+      pthread_cond_signal(&send_notFull);
 
       printf("%d sending \nTo:", destination);
       printClock(my_rank, processClock);
@@ -234,14 +207,15 @@ void toSendQueue(int to)
 {
    processClock.times[my_rank]++;
    pthread_mutex_lock(&send_mutex);
+
    if (clockCountSend == BUFFER_SIZE){
-      pthread_cond_wait(&cond_send_full, &send_mutex);
+      pthread_cond_wait(&send_notFull, &send_mutex);
    }
 
    submitClock(processClock, &clockCountSend, clockSendQueue);
 
    pthread_mutex_unlock(&send_mutex);
-   pthread_cond_signal(&cond_receive_empty);
+   pthread_cond_signal(&send_notEmpty);
    destination = to;
    sem_post(&semaphore_Send);
 }
@@ -254,13 +228,13 @@ void receiveFromQueue(int from)
    processClock.times[my_rank]++;
    pthread_mutex_lock(&receive_mutex);
    if (clockCountReceive == 0){
-      pthread_cond_wait(&cond_receive_empty, &send_mutex);
+      pthread_cond_wait(&receive_notEmpty, &send_mutex);
    }
 
    Clock newClock = getClock(clockReceiveQueue, &clockCountReceive);
 
    pthread_mutex_unlock(&receive_mutex);
-   pthread_cond_signal(&cond_receive_full);
+   pthread_cond_signal(&receive_notFull);
 
    for (int i = 0; i < BUFFER_SIZE; i++) {
       processClock.times[i] = processClock.times[i] > newClock.times[i] ? processClock.times[i] : newClock.times[i];
