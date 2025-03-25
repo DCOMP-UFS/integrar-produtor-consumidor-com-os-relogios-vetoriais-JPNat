@@ -55,16 +55,10 @@ void submitClock
 );
 // Funcao responsável por colocar um relógio em uma das filas
 
-void* receiveClock
-(
-   void *whoSent
-);
+void* receiveClock();
 // função da thread que recebe relógio de outros processos
 
-void* sendClock
-(
-   void *clock
-);
+void* sendClock();
 // função da thread que envia relógio de outros processos
 
 void event
@@ -103,12 +97,14 @@ int main
    {
    case 0:
       event();
+      printClock(my_rank, processClock);
       toSendQueue(1);
       receiveFromQueue(1);
       toSendQueue(2);
       receiveFromQueue(2);
       toSendQueue(1);
       event();
+      printClock(my_rank, processClock);
       break;
    case 1:
       toSendQueue(0);
@@ -172,10 +168,8 @@ void submitClock
    (*count)++;
 }
 
-void* receiveClock
-(
-   void *whoSent
-){
+void* receiveClock()
+{
    while (1)
    {   
       int received[BUFFER_SIZE];
@@ -183,27 +177,25 @@ void* receiveClock
       sem_wait(&semaphore_Receive);
       MPI_Recv(received, BUFFER_SIZE, MPI_INT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 
-      pthread_mutex_lock(&receive_mutex);
-      
       Clock newClock = {{received[0], received[1], received[2]}};
-      printf("%d received \nFrom:", my_rank);
-      printClock(source, newClock);
+      printf("%d received \nFrom:", source);
+      printClock(my_rank, processClock);
 
+      pthread_mutex_lock(&receive_mutex);
       if (clockCountReceive == BUFFER_SIZE)
       {
-         pthread_cond_wait(&cond_receive_full, &receive_mutex);
+         pthread_cond_wait(&cond_receive_empty, &receive_mutex);
       }
 
       submitClock(newClock, &clockCountReceive, clockReceiveQueue);
       pthread_mutex_unlock(&receive_mutex);
-      pthread_cond_signal(&cond_send_empty);
+      pthread_cond_signal(&cond_receive_full);
       return NULL;
    }
 }
 
-void* sendClock(
-   void *toWho
-){
+void* sendClock()
+{
    while (1)
    {
       pthread_mutex_lock(&send_mutex);
@@ -218,8 +210,8 @@ void* sendClock(
       pthread_mutex_unlock(&send_mutex);
       pthread_cond_signal(&cond_send_full);
 
-      printf("sending from %d\nTo ", my_rank);
-      printClock(destination, newClock);
+      printf("%d sending \nTo:", destination);
+      printClock(my_rank, processClock);
 
       sem_wait(&semaphore_Send);
       MPI_Send(newClock.times, BUFFER_SIZE, MPI_INT, destination, 0, MPI_COMM_WORLD);
