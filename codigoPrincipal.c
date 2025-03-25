@@ -113,6 +113,7 @@ int main
       break;
    case 2:
       event();
+      printClock(my_rank, processClock);
       toSendQueue(0);
       receiveFromQueue(0);
       break;
@@ -120,15 +121,20 @@ int main
       break;
    }
 
-   for (int i = 0; i < 3; i++)
-   {
-      if (my_rank == i){
-         printClock(my_rank, processClock);
-      }
-   }
    sem_destroy(&semaphore_Receive);
    sem_destroy(&semaphore_Send);
 
+   pthread_join(receiver, NULL);
+   pthread_join(deliver, NULL);
+
+   pthread_mutex_destroy(&receive_mutex);
+   pthread_mutex_destroy(&send_mutex);
+
+   pthread_cond_destroy(&cond_receive_empty);
+   pthread_cond_destroy(&cond_receive_full);
+   pthread_cond_destroy(&cond_send_empty);
+   pthread_cond_destroy(&cond_send_full);
+   
    MPI_Finalize();
    return 0;
 } /* main */
