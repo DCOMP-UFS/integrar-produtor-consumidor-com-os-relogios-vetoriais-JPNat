@@ -208,10 +208,10 @@ void event
 void toSendQueue(int to)
 {
    wait(1);
+   pthread_mutex_lock(&send_mutex);
    destination = to;
    processClock.times[my_rank]++;
 
-   pthread_mutex_lock(&send_mutex);
    while (clockCountSend == BUFFER_SIZE){
       pthread_cond_wait(&send_notFull, &send_mutex);
    }
@@ -225,10 +225,10 @@ void toSendQueue(int to)
 void receiveFromQueue(int from)
 {
    wait(1);
+   pthread_mutex_lock(&receive_mutex);
    source = from;
    processClock.times[my_rank]++;
 
-   pthread_mutex_lock(&receive_mutex);
    while (clockCountReceive == 0){
       pthread_cond_wait(&receive_notEmpty, &receive_mutex);
    }
@@ -241,5 +241,4 @@ void receiveFromQueue(int from)
    for (int i = 0; i < BUFFER_SIZE; i++) {
       processClock.times[i] = processClock.times[i] > newClock.times[i] ? processClock.times[i] : newClock.times[i];
    }
-
 }
