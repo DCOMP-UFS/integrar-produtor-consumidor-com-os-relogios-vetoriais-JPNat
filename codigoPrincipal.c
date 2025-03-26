@@ -58,25 +58,38 @@ int main (int argc, char *argv[])
    switch (my_rank)
    {
    case 0:
+      printf("a");
       event();
       printClock(my_rank, processClock);
+      printf("b");
       toSendQueue(1);
+      printf("c");
       receiveFromQueue(1);
+      printf("d");
       toSendQueue(2);
+      printf("e");
       receiveFromQueue(2);
+      printf("f");
       toSendQueue(1);
+      printf("g");
       event();
       printClock(my_rank, processClock);
       break;
    case 1:
+      printf("h");
       toSendQueue(0);
+      printf("i");
       receiveFromQueue(0);
+      printf("j");
       receiveFromQueue(0);
       break;
    case 2:
+      printf("k");
       event();
       printClock(my_rank, processClock);
+      printf("l");
       toSendQueue(0);
+      printf("m");
       receiveFromQueue(0);
       break;
    default:
