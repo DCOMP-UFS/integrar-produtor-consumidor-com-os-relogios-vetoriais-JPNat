@@ -58,39 +58,49 @@ int main (int argc, char *argv[])
    switch (my_rank)
    {
    case 0:
+      event();
       printf("a");
-      event();
       printClock(my_rank, processClock);
+      toSendQueue(1);
       printf("b");
-      toSendQueue(1);
-      printf("c");
+      printClock(my_rank, processClock);
       receiveFromQueue(1);
-      printf("d");
+      printf("c");
+      printClock(my_rank, processClock);
       toSendQueue(2);
-      printf("e");
+      printf("d");
+      printClock(my_rank, processClock);
       receiveFromQueue(2);
-      printf("f");
+      printf("e");
+      printClock(my_rank, processClock);
       toSendQueue(1);
-      printf("g");
+      printf("f");
+      printClock(my_rank, processClock);
       event();
+      printf("g");
       printClock(my_rank, processClock);
       break;
    case 1:
-      printf("h");
       toSendQueue(0);
+      printf("h");
+      printClock(my_rank, processClock);
+      receiveFromQueue(0);
       printf("i");
+      printClock(my_rank, processClock);
       receiveFromQueue(0);
       printf("j");
-      receiveFromQueue(0);
+      printClock(my_rank, processClock);
       break;
    case 2:
-      printf("k");
       event();
+      printf("k");
       printClock(my_rank, processClock);
-      printf("l");
       toSendQueue(0);
-      printf("m");
+      printf("l");
+      printClock(my_rank, processClock);
       receiveFromQueue(0);
+      printf("m");
+      printClock(my_rank, processClock);
       break;
    default:
       break;
@@ -201,8 +211,6 @@ void toSendQueue(int to)
    destination = to;
    processClock.times[my_rank]++;
 
-   printf("Sending to %d from ", to); printClock(my_rank, processClock);
-
    pthread_mutex_lock(&send_mutex);
    while (clockCountSend == BUFFER_SIZE){
       pthread_cond_wait(&send_notFull, &send_mutex);
@@ -219,8 +227,6 @@ void receiveFromQueue(int from)
    wait(1);
    source = from;
    processClock.times[my_rank]++;
-
-   printf("Receiving from %d /", from); printClock(my_rank, processClock);
 
    pthread_mutex_lock(&receive_mutex);
    while (clockCountReceive == 0){
