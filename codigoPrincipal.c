@@ -33,8 +33,8 @@ void submitClock (Clock clock, int *count, Clock *queue);
 void* receiveClock();
 void* sendClock();
 void event();
-void toSendQueue(int to);
-void receiveFromQueue(int from);
+void toSendQueue();
+void receiveFromQueue();
 
 int main (int argc, char *argv[])
 {
@@ -163,9 +163,10 @@ void* receiveClock()
    while (1)
    {   
       pthread_mutex_lock(&receive_mutex);
+      int local = source;
       int received[BUFFER_SIZE];
 
-      MPI_Recv(received, BUFFER_SIZE, MPI_INT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      MPI_Recv(received, BUFFER_SIZE, MPI_INT, local, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
       Clock newClock = {{received[0], received[1], received[2]}};
 
@@ -186,6 +187,7 @@ void* sendClock()
    while (1)
    {
       pthread_mutex_lock(&send_mutex);
+      int local = destination;
 
       while (clockCountSend == 0)
       {
@@ -194,10 +196,9 @@ void* sendClock()
       
       Clock newClock = getClock(clockSendQueue, &clockCountSend);
 
+      MPI_Send(newClock.times, BUFFER_SIZE, MPI_INT, local, 0, MPI_COMM_WORLD);
       pthread_mutex_unlock(&send_mutex);
       pthread_cond_signal(&send_notFull);
-
-      MPI_Send(newClock.times, BUFFER_SIZE, MPI_INT, destination, 0, MPI_COMM_WORLD);
    }
    return NULL;
 }
@@ -209,7 +210,6 @@ void event
 
 void toSendQueue(int to)
 {
-   wait(1);
    pthread_mutex_lock(&send_mutex);
    destination = to;
    processClock.times[my_rank]++;
@@ -226,7 +226,6 @@ void toSendQueue(int to)
 
 void receiveFromQueue(int from)
 {
-   wait(1);
    pthread_mutex_lock(&receive_mutex);
    source = from;
    processClock.times[my_rank]++;
