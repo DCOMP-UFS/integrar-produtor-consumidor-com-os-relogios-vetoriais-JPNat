@@ -10,17 +10,20 @@
 typedef struct{
    int times[BUFFER_SIZE];
 }Clock;
+typedef struct
+{
+   Clock clock;
+   int adress;
+}Message;
 
 Clock processClock = {{0, 0, 0}};
 
-Clock clockReceiveQueue[BUFFER_SIZE]; // Primeira fila para chegar na thread relogio
-Clock clockSendQueue[BUFFER_SIZE];  // Fila para sair do relogio
+Message messageReceiveQueue[BUFFER_SIZE]; // Primeira fila para chegar na thread relogio
+Message messageSendQueue[BUFFER_SIZE];  // Fila para sair do relogio
 
-int clockCountReceive = 0;
-int clockCountSend = 0;
+int messageCountReceive = 0;
+int messageCountSend = 0;
 int my_rank;
-
-int destination, source;
 
 pthread_mutex_t receive_mutex, send_mutex;
 
@@ -28,13 +31,13 @@ pthread_cond_t receive_notFull, receive_notEmpty;
 pthread_cond_t send_notFull, send_notEmpty;
 
 void printClock (int who, Clock showClock);
-Clock getClock (Clock *queue, int *queueCount);
-void submitClock (Clock clock, int *count, Clock *queue);
+Message getMessage (Message* queue, int *queueCount);
+void submitMessage (Message message, int *count, Message* queue);
 void* receiveClock();
 void* sendClock();
 void event();
-void toSendQueue();
-void receiveFromQueue();
+void toSendQueue(int to);
+void receiveFromQueue(int from);
 
 int main (int argc, char *argv[])
 {
@@ -52,10 +55,8 @@ int main (int argc, char *argv[])
    pthread_cond_init(&send_notEmpty, NULL);
    pthread_cond_init(&send_notFull, NULL);
 
-   int source, destination;
-
-   pthread_create(&receiver, NULL, &receiveClock, (void*)(intptr_t) source);
-   pthread_create(&deliver, NULL, &sendClock, (void*)(intptr_t) destination);
+   pthread_create(&receiver, NULL, &receiveClock, NULL);
+   pthread_create(&deliver, NULL, &sendClock, NULL);
 
    switch (my_rank)
    {
@@ -131,51 +132,62 @@ void printClock
    printf("%d clock: (%d, %d, %d)\n", who, showClock.times[0], showClock.times[1], showClock.times[2]);
 }
 
-Clock getClock
+Message getMessage
 (
-   Clock *queue,
+   Message* queue,
    int *queueCount
 ){
-   Clock clock = queue[0];
-   int i;
-   for (i = 0; i < *queueCount - 1; i++)
+   Message message = queue[0];
+   for (int i = 0; i < *queueCount - 1; i++)
    {
       queue[i] = queue[i + 1];
    }
 
    (*queueCount)--;
 
-   return clock;
+   return message;
 }
 
-void submitClock
+void submitMessage
 (
-   Clock clock,
+   Message message,
    int *count,
-   Clock *queue
+   Message* queue
 ){
-   queue[*count] = clock;
+   queue[*count] = message;
    (*count)++;
 }
 
 void* receiveClock()
 {
+
+   int received[BUFFER_SIZE];
+   MPI_Status status;
+   Clock newClock = {{0, 0, 0}};
+   Message message = {newClock, -1}; 
+   
    while (1)
    {   
       pthread_mutex_lock(&receive_mutex);
-      int local = source;
-      int received[BUFFER_SIZE];
 
-      MPI_Recv(received, BUFFER_SIZE, MPI_INT, local, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-      Clock newClock = {{received[0], received[1], received[2]}};
-
-      while (clockCountReceive == BUFFER_SIZE)
+      while (messageCountReceive == BUFFER_SIZE)
       {
          pthread_cond_wait(&receive_notFull, &receive_mutex);
       }
-      submitClock(newClock, &clockCountReceive, clockReceiveQueue);
+
+      MPI_Recv(received, BUFFER_SIZE, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+
+      for (int i = 0; i < BUFFER_SIZE; i++) 
+      {
+         newClock.times[i] = received[i];
+      }
+
+      message.clock = newClock;
+      message.adress = status.MPI_SOURCE;
+
+      submitMessage(message, &messageCountReceive, messageReceiveQueue);
       pthread_mutex_unlock(&receive_mutex);
+
       pthread_cond_signal(&receive_notEmpty);
 
       return NULL;
@@ -184,19 +196,20 @@ void* receiveClock()
 
 void* sendClock()
 {
+   Message newMessage;
+
    while (1)
    {
-      pthread_mutex_lock(&send_mutex);
-      int local = destination;
 
-      while (clockCountSend == 0)
+      pthread_mutex_lock(&send_mutex);
+      while (messageCountSend == 0)
       {
          pthread_cond_wait(&send_notEmpty, &send_mutex);
       }
       
-      Clock newClock = getClock(clockSendQueue, &clockCountSend);
+      newMessage = getMessage(messageSendQueue, &messageCountSend);
 
-      MPI_Send(newClock.times, BUFFER_SIZE, MPI_INT, local, 0, MPI_COMM_WORLD);
+      MPI_Send(newMessage.clock.times, BUFFER_SIZE, MPI_INT, newMessage.adress, 0, MPI_COMM_WORLD);
       pthread_mutex_unlock(&send_mutex);
       pthread_cond_signal(&send_notFull);
    }
@@ -211,14 +224,14 @@ void event
 void toSendQueue(int to)
 {
    pthread_mutex_lock(&send_mutex);
-   destination = to;
    processClock.times[my_rank]++;
 
-   while (clockCountSend == BUFFER_SIZE){
+   while (messageCountSend == BUFFER_SIZE){
       pthread_cond_wait(&send_notFull, &send_mutex);
    }
 
-   submitClock(processClock, &clockCountSend, clockSendQueue);
+   Message newMessage = {processClock, to};
+   submitMessage(newMessage, &messageCountSend, messageSendQueue);
 
    pthread_mutex_unlock(&send_mutex);
    pthread_cond_signal(&send_notEmpty);
@@ -227,15 +240,23 @@ void toSendQueue(int to)
 void receiveFromQueue(int from)
 {
    pthread_mutex_lock(&receive_mutex);
-   source = from;
    processClock.times[my_rank]++;
+   Message newMessage;
 
-   while (clockCountReceive == 0){
-      pthread_cond_wait(&receive_notEmpty, &receive_mutex);
+   do 
+   {
+      while (messageCountReceive == 0){
+         pthread_cond_wait(&receive_notEmpty, &receive_mutex);
+      }
+
+      newMessage = getMessage(messageReceiveQueue, &messageCountReceive);
+   }while (newMessage.adress != from);
+   
+   for (int i = 0; i < 3; i++)
+   {
+      processClock.times[i] = processClock.times[i] > newMessage.clock.times[i] ? processClock.times[i] : newMessage.clock.times[i];
    }
-
-   Clock newClock = getClock(clockReceiveQueue, &clockCountReceive);
-
+   
    pthread_mutex_unlock(&receive_mutex);
    pthread_cond_signal(&receive_notFull);
 }
