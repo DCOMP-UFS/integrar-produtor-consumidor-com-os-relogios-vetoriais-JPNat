@@ -33,8 +33,8 @@ pthread_cond_t send_notFull, send_notEmpty;
 void printClock (int who, Clock showClock);
 Message getMessage (Message* queue, int *queueCount);
 void submitMessage (Message message, int *count, Message* queue);
-void* receiveClock();
-void* sendClock();
+void receiveClock();
+void sendClock();
 void event();
 void toSendQueue(int to);
 void receiveFromQueue(int from);
@@ -158,7 +158,7 @@ void submitMessage
    (*count)++;
 }
 
-void* receiveClock()
+void receiveClock()
 {
 
    int received[BUFFER_SIZE];
@@ -190,11 +190,10 @@ void* receiveClock()
 
       pthread_cond_signal(&receive_notEmpty);
 
-      return NULL;
    }
 }
 
-void* sendClock()
+void sendClock()
 {
    Message newMessage;
 
@@ -213,7 +212,6 @@ void* sendClock()
       pthread_mutex_unlock(&send_mutex);
       pthread_cond_signal(&send_notFull);
    }
-   return NULL;
 }
 
 void event
