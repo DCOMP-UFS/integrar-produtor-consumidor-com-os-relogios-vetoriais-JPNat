@@ -20,7 +20,7 @@ int clockCountReceive = 0;
 int clockCountSend = 0;
 int my_rank;
 
-int source, destination;
+int destination, source;
 
 pthread_mutex_t receive_mutex, send_mutex;
 
@@ -52,8 +52,10 @@ int main (int argc, char *argv[])
    pthread_cond_init(&send_notEmpty, NULL);
    pthread_cond_init(&send_notFull, NULL);
 
-   pthread_create(&receiver, NULL, &receiveClock, NULL);
-   pthread_create(&deliver, NULL, &sendClock, NULL);
+   int source, destination;
+
+   pthread_create(&receiver, NULL, &receiveClock, (void*)(intptr_t) source);
+   pthread_create(&deliver, NULL, &sendClock, (void*)(intptr_t) destination);
 
    switch (my_rank)
    {
@@ -160,13 +162,13 @@ void* receiveClock()
 {
    while (1)
    {   
+      pthread_mutex_lock(&receive_mutex);
       int received[BUFFER_SIZE];
 
       MPI_Recv(received, BUFFER_SIZE, MPI_INT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
       Clock newClock = {{received[0], received[1], received[2]}};
 
-      pthread_mutex_lock(&receive_mutex);
       while (clockCountReceive == BUFFER_SIZE)
       {
          pthread_cond_wait(&receive_notFull, &receive_mutex);
@@ -237,8 +239,4 @@ void receiveFromQueue(int from)
 
    pthread_mutex_unlock(&receive_mutex);
    pthread_cond_signal(&receive_notFull);
-
-   for (int i = 0; i < BUFFER_SIZE; i++) {
-      processClock.times[i] = processClock.times[i] > newClock.times[i] ? processClock.times[i] : newClock.times[i];
-   }
 }
