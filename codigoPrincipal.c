@@ -101,6 +101,9 @@ int main
    pthread_create(&sender, NULL, &senderFunction, NULL);
 
    processClock = malloc(sizeof(Clock));
+   for (int i = 0; i < 3; i++){
+      processClock->times[i] = 0;
+   }
 
    switch (my_rank)
    {
@@ -164,6 +167,8 @@ int main
    pthread_cond_destroy(&cond_send_empty);
    pthread_cond_destroy(&cond_send_full);
    MPI_Finalize();
+
+   free(processClock);
    return 0;
 } /* main */
 
