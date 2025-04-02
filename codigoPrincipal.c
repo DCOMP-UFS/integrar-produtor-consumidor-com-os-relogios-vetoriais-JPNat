@@ -220,7 +220,7 @@ void receiveMPI( int from ){
       newClock.times[i] = message[i];
    }
 
-   submitClock(newClock, clockCountReceive, clockReceiveQueue);
+   submitClock(newClock, &clockCountReceive, clockReceiveQueue);
 
    pthread_mutex_unlock(&receive_mutex);
    pthread_cond_signal(&cond_receive_full);
@@ -254,7 +254,7 @@ void sendMPI( int to ){
       pthread_cond_wait(&cond_send_full, &send_mutex);
    }
 
-   Clock newClock = getClock(clockSendQueue, clockCountSend);
+   Clock newClock = getClock(clockSendQueue, &clockCountSend);
    pthread_mutex_unlock(&send_mutex);
    pthread_cond_signal(&cond_send_empty);
 
@@ -279,6 +279,7 @@ void* senderFunction
    default:
       break;
    }
+   return NULL;
 }
 
 void event
@@ -296,7 +297,7 @@ void updateClock
       pthread_cond_wait(&cond_receive_full, &receive_mutex);
    }
 
-   Clock newClock = getClock(clockReceiveQueue, clockCountReceive);
+   Clock newClock = getClock(clockReceiveQueue, &clockCountReceive);
 
    pthread_mutex_unlock(&receive_mutex);
    pthread_cond_signal(&cond_receive_empty);
@@ -317,6 +318,8 @@ void imageClock
    if (clockCountSend == BUFFER_SIZE){
       pthread_cond_wait(&cond_send_empty, &send_mutex);
    }
+
+   submitClock(newClock, &clockCountSend, clockSendQueue);
 
    pthread_mutex_unlock(&send_mutex);
    pthread_cond_signal(&cond_send_full);
