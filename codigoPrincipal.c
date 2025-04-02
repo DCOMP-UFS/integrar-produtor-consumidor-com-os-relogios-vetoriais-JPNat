@@ -244,6 +244,7 @@ void* receiverFuncion
    default:
       break;
    }
+   return NULL;
 }
 
 void sendMPI( int to ){
