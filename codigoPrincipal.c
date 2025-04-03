@@ -10,17 +10,20 @@
 typedef struct{
    int times[BUFFER_SIZE];
 }Clock;
+typedef struct
+{
+   Clock clock;
+   int adress;
+}Message;
 
 Clock* processClock;
 
-Clock clockReceiveQueue[BUFFER_SIZE]; // Primeira fila para chegar na thread relogio
-Clock clockSendQueue[BUFFER_SIZE];  // Fila para sair do relogio
+Message messageReceiveQueue[BUFFER_SIZE]; // Primeira fila para chegar na thread relogio
+Message messageSendQueue[BUFFER_SIZE];  // Fila para sair do relogio
 
-int clockCountReceive = 0;
-int clockCountSend = 0;
+int messageCountReceive = 0;
+int messageCountSend = 0;
 int my_rank;
-
-int source, destination;
 
 pthread_mutex_t receive_mutex, send_mutex;
 
@@ -78,11 +81,9 @@ void updateClock
 void imageClock
 ();
 
-int main
-(
-   int argc,
-   char *argv[]
-){
+
+int main (int argc, char *argv[])
+{
    MPI_Init(NULL, NULL);
    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
@@ -92,10 +93,10 @@ int main
    pthread_mutex_init(&receive_mutex, NULL);
    pthread_mutex_init(&send_mutex, NULL);
 
-   pthread_cond_init(&cond_receive_full, NULL);
-   pthread_cond_init(&cond_receive_empty, NULL);
-   pthread_cond_init(&cond_send_empty, NULL);
-   pthread_cond_init(&cond_send_full, NULL);
+   pthread_cond_init(&receive_notFull, NULL);
+   pthread_cond_init(&receive_notEmpty, NULL);
+   pthread_cond_init(&send_notEmpty, NULL);
+   pthread_cond_init(&send_notFull, NULL);
 
    pthread_create(&receiver, NULL, &receiverFuncion, NULL);
    pthread_create(&sender, NULL, &senderFunction, NULL);
@@ -180,30 +181,29 @@ void printClock
    printf("Process: %d, Clock: (%d, %d, %d)\n", who, showClock->times[0], showClock->times[1], showClock->times[2]);
 }
 
-Clock getClock
+Message getMessage
 (
-   Clock *queue,
+   Message* queue,
    int *queueCount
 ){
-   Clock clock = queue[0];
-   int i;
-   for (i = 0; i < *queueCount - 1; i++)
+   Message message = queue[0];
+   for (int i = 0; i < *queueCount - 1; i++)
    {
       queue[i] = queue[i + 1];
    }
 
    (*queueCount)--;
 
-   return clock;
+   return message;
 }
 
-void submitClock
+void submitMessage
 (
-   Clock clock,
+   Message message,
    int *count,
-   Clock *queue
+   Message* queue
 ){
-   queue[*count] = clock;
+   queue[*count] = message;
    (*count)++;
 }
 
